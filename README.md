@@ -1,5 +1,5 @@
 # DOSUE
-Docker compose SUper Express deployment tool
+DOcker compose SUper Express deployment tool
 
 ## INSTALL
 ```
