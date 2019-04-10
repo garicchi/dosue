@@ -12,6 +12,7 @@ readonly SCRIPT_NAME="$(basename $0)"
 readonly SCRIPT_PATH="$(cd $(dirname $0); pwd)"
 readonly CURRENT_DIR=$(pwd)
 readonly CONTAINER_PATH="\${HOME}/.containers"
+readonly VERSION=1.1
 
 function print_success {
     printf "\n${COLOR_SUCCESS}[SUCCESS] $1${COLOR_END}\n" >&2
@@ -41,6 +42,8 @@ OPTIONS
         [int] ssh port number
     -r | --repository
         [repository] container regisotry name { ecr, gcr }
+    -v | --version
+       show version
     -h | --help
        show this message
 COMMANDS
@@ -81,6 +84,10 @@ for OPT in "$@"; do
             ;;
         -r | --registory)
             REGISTRY="$2"
+            shift 2
+            ;;
+        -v | --version)
+            echo "${VERSION}"
             shift 2
             ;;
         -h | --help)
