@@ -3,10 +3,10 @@ set -e
 
 export LANG=ja_JP.UTF-8
 
-COLOR_SUCCESS="\e[32;1m"
-COLOR_INPUT="\e[35;5m"
-COLOR_ERROR="\e[31;1m"
-COLOR_END="\e[m"
+readonly COLOR_SUCCESS="\e[32;1m"
+readonly COLOR_INPUT="\e[35;5m"
+readonly COLOR_ERROR="\e[31;1m"
+readonly COLOR_END="\e[m"
 
 readonly SCRIPT_NAME="$(basename $0)"
 readonly SCRIPT_PATH="$(cd $(dirname $0); pwd)"
@@ -111,13 +111,23 @@ fi
 readonly SERVICE_NAME=$(echo ${CURRENT_DIR}|awk -F "/" '{ print $NF }')
 readonly SERVICE_PATH="${CONTAINER_PATH}/${SERVICE_NAME}"
 
+if ! type aws > /dev/null 2>&1; then
+    print_error "aws command not found! please install"
+    exit 1
+fi
 
 if [[ ${COMMAND} = "deploy" ]]; then
     ssh -p ${PORT} ${SERVER} "mkdir -p ${CONTAINER_PATH}"
+    ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}||true"
     ssh -p ${PORT} ${SERVER} "mkdir -p ${SERVICE_PATH}"
     
     scp -P ${PORT} ${COMPOSE_FILE} ${SERVER}:${SERVICE_PATH}/
-    scp -P ${PORT} ${ENV_FILE} ${SERVER}:${SERVICE_PATH}/
+
+    if [[ -e ${ENV_FILE} ]]; then
+        scp -P ${PORT} ${ENV_FILE} ${SERVER}:${SERVICE_PATH}/
+    else
+        echo "[WARNING] ${ENV_FILE} not found. skip to deploy env file"
+    fi
     
     echo $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE}) > /tmp/ecr_login
     
