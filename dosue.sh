@@ -13,8 +13,12 @@ readonly SCRIPT_PATH="$(cd $(dirname $0); pwd)"
 readonly CURRENT_DIR=$(pwd)
 readonly CONTAINER_PATH="\${HOME}/.containers"
 
+function print_success {
+    printf "\n${COLOR_SUCCESS}[SUCCESS] $1${COLOR_END}\n" >&2
+}
+
 function print_error {
-    printf "\n${COLOR_ERROR}$1${COLOR_END}\n" >&2
+    printf "\n${COLOR_ERROR}[ERROR] $1${COLOR_END}\n" >&2
 }
 
 function print_help {
@@ -42,6 +46,10 @@ OPTIONS
 COMMANDS
     deploy
         pull and up conainers in remote server
+    cleanup
+        down and remove containers in remote server
+    login
+        login docker-compose.yml directory in remote server
     <any command>
         any command passes to remote docker compose
 __EOS__
@@ -118,6 +126,22 @@ if [[ ${COMMAND} = "deploy" ]]; then
     rm -f /tmp/ecr_login
     
     ssh -p ${PORT} ${SERVER} "docker logout"
+
+    print_success "🚅 container deployment completed!"
+    exit 0
+fi
+
+if [[ ${COMMAND} = "cleanup" ]]; then
+    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && [[ \$(docker-compose ps -q|wc -l) -gt 0 ]] && docker-compose down"
+    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose rm -f -s"
+    ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}"
+    
+    print_success "🧹 container cleanup completed!"
+    exit 0
+fi
+
+if [[ ${COMMAND} = "login" ]]; then
+    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH};bash -i"
     exit 0
 fi
 
