@@ -36,17 +36,19 @@ EXAMPLE
 
 OPTIONS
     -s | --server
-        [string] ssh style server host name ex. <username>@<host>
+       [string] ssh style server host name ex. <username>@<host>
     -c | --compose-file
-        [string] docker-compose.yml path. default is current dir
+       [string] docker-compose.yml path. default is current dir
     -e | --env-file
-        [string] .env file path for docker-compose. default is current dir
+       [string] .env file path for docker-compose. default is current dir
     -p | --port
-        [int] ssh port number
+       [int] ssh port number
     -r | --repository
-        [repository] container regisotry name { ecr, gcr }
+       [choice] container regisotry name { ecr, gcr }
+    -f | --force
+       [flag] force deploy
     -v | --version
-       show version
+       [flag] show version
     -h | --help
        show this message
 
@@ -69,6 +71,7 @@ declare COMPOSE_FILE="docker-compose.yml"
 declare ENV_FILE=".env"
 declare PORT=22
 declare REGISTRY=""
+declare FORCE=false
 
 for OPT in "$@"; do
     case "$OPT" in
@@ -94,7 +97,11 @@ for OPT in "$@"; do
             ;;
         -v | --version)
             echo "${VERSION}"
-            shift 2
+            shift 1
+            ;;
+        -f | --force)
+            FORCE=true
+            shift 1
             ;;
         -h | --help)
             print_help
@@ -118,10 +125,25 @@ if ! type aws > /dev/null 2>&1; then
     exit 1
 fi
 
+readonly DOSUE_STATUS=$(ssh -p ${PORT} ${SERVER} "ls ${CONTAINER_PATH}|grep -x \"${SERVICE_NAME}\"|wc -l")
+
 if [[ ${COMMAND} = "deploy" ]]; then
+    
+    if [[ ${DOSUE_STATUS} -gt 0 && ${FORCE} = false ]]; then
+        printf "container [ ${SERVICE_NAME} ] is already deployed\n"
+        read -p "Overwrite? (Y/n) " ANS
+        if [[ ! ${ANS} = "Y" ]]; then
+            if [[ ${ANS} = "n" || ! ${ANS} = "" ]]; then
+                printf "deploy canceled!"
+                exit 1
+            fi
+        fi        
+    fi
+
     ssh -p ${PORT} ${SERVER} "mkdir -p ${CONTAINER_PATH}"
     ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}||true"
     ssh -p ${PORT} ${SERVER} "mkdir -p ${SERVICE_PATH}"
+    ssh -p ${PORT} ${SERVER} "echo \"\" > ${SERVICE_PATH}/dosue.info"
     
     scp -P ${PORT} ${COMPOSE_FILE} ${SERVER}:${SERVICE_PATH}/
 
@@ -169,15 +191,18 @@ if [[ ${COMMAND} = "cleanup" ]]; then
 fi
 
 if [[ ${COMMAND} = "status" ]]; then
-    printf "\n\n"
-    DOSUE_STATUS=$(ssh -p ${PORT} ${SERVER} "ls ${CONTAINER_PATH}|grep -x \"${SERVICE_NAME}\"|wc -l")
+    printf "***** deploy status *****\n\n"
     if [[ ${DOSUE_STATUS} -gt 0 ]]; then
-        printf "container [ ${SERVICE_NAME} ] directory found!\n"
-        printf "\n\n"
-        ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose ps"
+        printf "container [ ${SERVICE_NAME} ] already deployed!\n"
+        printf "docker-compose.yml is in [ ${SERVICE_PATH} ]\n"
+        printf "\n\n***** dosue info *****\n"
+        printf "dosue.info\n"
+        ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && cat dosue.info"
+        printf "\n\n***** container processes *****\n"
+        ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose ps" 2> /dev/null
 
     else
-        printf "container [ ${SERVICE_NAME} ] directory not found!\n"
+        printf "container [ ${SERVICE_NAME} ] has not been deployed yet\n"
     fi
     exit 0
 fi
