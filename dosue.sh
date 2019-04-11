@@ -94,15 +94,11 @@ for OPT in "$@"; do
             print_help
             exit 0
             ;;
-        -*)
-            print_help >&2
-            print_error "unknown option: $OPT"
-            exit 1
-            ;;
     esac
 done
 
-COMMAND="$1"
+COMMANDS="$@"
+COMMAND="${COMMANDS[0]}"
 
 if [[ -z "${AWS_PROFILE}" ]]; then
     AWS_PROFILE="default"
@@ -163,7 +159,7 @@ if [[ ${COMMAND} = "login" ]]; then
 fi
 
 if [[ ! -z "${COMMAND}" ]]; then    
-    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose ${COMMAND}"
+    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose ${COMMANDS}"
     exit 0
 fi
 
