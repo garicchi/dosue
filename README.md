@@ -64,7 +64,7 @@ services:
 ## DEPLOY CONTAINER
 
 ### for deploying with ECR situation
-```
+```bash
 # move service root directory
 cd <path to docker-compose.yml dir>
 
