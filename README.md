@@ -46,17 +46,48 @@ ssh <remote server>
 sudo yum update -y&&sudo yum install -y docker&&sudo service docker start&&sudo usermod -a -G docker ec2-user
 #   install docker-compose
 sudo curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose&&sudo chmod +x /usr/local/bin/docker-compose
-
 ```
+
+- add image tag in your docker-compose.yml
+  - dosue will pull image from registory written in image tag
+```
+services:
+  web:
+    # build tag uses to develop container in local machine
+    build:
+      context: ./web
+    # image tag uses push or pull
+    image: <***>.amazonaws.com/<image name>
+```
+
 
 ## DEPLOY CONTAINER
 
+### for deploying with ECR situation
 ```
+# move service root directory
 cd <path to docker-compose.yml dir>
+
+# develop code!
+
+# confirm application in local machine
+docker-compose build && docker-compose up
+
+# ok! terminate
+^C
+
+# login to ECR
+export AWS_PROFILE=<profile>
+aws configure --profile ${AWS_PROFILE}
+$(aws aws ecr get-login --region ap-northeast-1 --no-include-email --profile ${AWS_PROFILE})
 
 # push image to registory
 docker-compose push
 
 # deploy container
+#  dosue recognize ${AWS_PROFILE} environment variable
 dosue --server <user@host> deploy
+
+# check container status
+dosue --server <user@host> status
 ```
