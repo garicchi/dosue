@@ -37,17 +37,16 @@ EXAMPLE
 
 OPTIONS
     -s | --server
-        [string] ssh style server host name ex. <username>@<host>
+        [require] [string] ssh style server host name ex. <username>@<host>
+    -r | --repository
+        [require] [choice] container regisotry name { ecr, hub }
+            now, dosue only support ecr or dockerhub
     -c | --compose-file
         [string] docker-compose.yml path. default is current dir
     -e | --env-file
         [string] .env file path for docker-compose. default is current dir
     -p | --port
         [int] ssh port number for accessing remote server
-    -r | --repository
-        [choice] container regisotry name { ecr }
-            now, dosue only support ecr
-            gcr support is future task
     -f | --force
         [flag] force deploy
     -n | --no-push
@@ -81,7 +80,7 @@ declare SERVER
 declare COMPOSE_FILE="docker-compose.yml"
 declare ENV_FILE=".env"
 declare PORT=22
-declare REGISTRY=""
+declare REGISTORY=""
 declare FORCE=false
 declare WEB_PORT=
 declare NO_PUSH=false
@@ -105,7 +104,7 @@ for OPT in "$@"; do
             shift 2
             ;;
         -r | --registory)
-            REGISTRY="$2"
+            REGISTORY="$2"
             shift 2
             ;;
         -v | --version)
@@ -141,9 +140,18 @@ fi
 readonly SERVICE_NAME=$(echo ${CURRENT_DIR}|awk -F "/" '{ print $NF }')
 readonly SERVICE_PATH="${CONTAINER_PATH}/${SERVICE_NAME}"
 
-if ! type aws > /dev/null 2>&1; then
-    print_error "aws command not found! please install"
+if [[ "${REGISTORY}" = "hub" || "${REGISTORY}" = "ecr" ]]; then
+    printf "use ${REGISTORY} registory\n"
+else
+    print_error "--registory [ ${REGISTORY} ] is wrong! please choose { hub, ecr }"
     exit 1
+fi
+
+if [[ "${REGISTORY}" = "ecr" ]]; then
+    if ! type aws > /dev/null 2>&1; then
+        print_error "aws command not found! please install"
+        exit 1
+    fi
 fi
 
 readonly DOSUE_STATUS=$(ssh -p ${PORT} ${SERVER} "ls ${CONTAINER_PATH}|grep -x \"${SERVICE_NAME}\"|wc -l")
@@ -152,9 +160,13 @@ if [[ ${COMMAND} = "deploy" ]]; then
     # confirm AWS profile
     if [[ ${FORCE} = false ]]; then
         printf "conainer registory info\n"
-        printf "aws profile [ ${AWS_PROFILE} ]\n"
-        aws sts get-caller-identity --profile ${AWS_PROFILE}
-        read -p "Use this account? (Y/n) " ANS
+        if [[ "${REGISTORY}" = "ecr" ]]; then
+            printf "aws profile [ ${AWS_PROFILE} ]\n"
+            aws sts get-caller-identity --profile ${AWS_PROFILE}
+        elif [[ "${REGISTORY}" = "hub" ]]; then
+            printf "use DockerHub\n"
+        fi
+        read -p "OK? (Y/n) " ANS
         if [[ ! ${ANS} = "Y" ]]; then
             if [[ ${ANS} = "n" || ! ${ANS} = "" ]]; then
                 printf "deploy canceled!"
@@ -176,7 +188,15 @@ if [[ ${COMMAND} = "deploy" ]]; then
 
     if [[ ${NO_PUSH} = false ]]; then
         pushd ${CURRENT_DIR}
-        $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE})
+        if [[ "${REGISTORY}" = "ecr" ]]; then
+            $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE})
+        elif [[ "${REGISTORY}" = "hub" ]]; then
+            read -p "DockerHub ID:" HUB_USER
+            read -sp "DockerHub Pass:" HUB_PASS
+            
+            docker login -u ${HUB_USER} -p ${HUB_PASS}
+        fi
+        
         docker-compose build
         docker-compose push
         popd
@@ -201,12 +221,16 @@ if [[ ${COMMAND} = "deploy" ]]; then
         DIRECTORY=$(echo $d|sed -e "s/Dockerfile//g")
         ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && mkdir -p ${DIRECTORY}"
     done
+    if [[ "${REGISTORY}" = "ecr" ]]; then
+        echo $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE}) > /tmp/ecr_login
+        scp -P ${PORT} /tmp/ecr_login ${SERVER}:/tmp/
+        ssh -p ${PORT} ${SERVER} "chmod u+x /tmp/ecr_login && bash /tmp/ecr_login"
+        ssh -p ${PORT} ${SERVER} "rm -f /tmp/ecr_login"
+        rm -f /tmp/ecr_login
+    elif [[ "${REGISTORY}" = "hub" ]]; then
+        ssh -p ${PORT} ${SERVER} "docker login -u ${HUB_USER} -p ${HUB_PASS}"
+    fi
     
-    echo $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE}) > /tmp/ecr_login
-    
-    scp -P ${PORT} /tmp/ecr_login ${SERVER}:/tmp/
-    
-    ssh -p ${PORT} ${SERVER} "chmod u+x /tmp/ecr_login && bash /tmp/ecr_login"
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && [[ \$(docker-compose ps -q|wc -l) -gt 0 ]] && docker-compose down || true"
     
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose pull"
@@ -236,9 +260,7 @@ __EOS__
     # if already wrote, then append hash. if did not already write, then rewrite line
     ssh -p ${PORT} ${SERVER} "FILE=${SERVICE_PATH}/dosue.info;REG=\"^GIT_HASH=\";LINE=\"GIT_HASH=${COMMIT_HASH}\";grep -e \"\$REG\" \$FILE&&(sed -e \"/\$REG/d\" -i \$FILE&&echo \$LINE>>\$FILE)||echo \$LINE>>\$FILE"
     
-    ssh -p ${PORT} ${SERVER} "rm -f /tmp/ecr_login"
-    rm -f /tmp/ecr_login
-    
+     
     ssh -p ${PORT} ${SERVER} "docker logout"
 
     print_success "🚅 container deployment completed!"

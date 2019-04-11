@@ -33,10 +33,6 @@ rm /usr/local/bin/dosue
 ```
 
 ## REQUIREMENTS
-- enable `aws` command and login using `aws configure`
-```sh
-aws configure
-```
 - enable ssh access to remote server and run `ssh-add <key>` with ssh-agent
 ```sh
 ssh-add <path to ssh private key to remote server>
@@ -63,10 +59,15 @@ services:
     image: <***>.amazonaws.com/<image name>
 ```
 
+- [ECR ONLY]enable `aws` command and login using `aws configure`
+```sh
+aws configure
+```
+
 
 ## DEPLOY CONTAINER
 
-### for deploying with ECR situation
+### for deploying situation
 ```sh
 # move service root directory
 cd <path to docker-compose.yml dir>
@@ -81,13 +82,13 @@ docker-compose build && docker-compose up
 
 # deploy container
 #  dosue recognize ${AWS_PROFILE} environment variable
-dosue --server <user@host> deploy
+dosue --server <user@host> --registory ecs deploy
 
 # check container status
 dosue --server <user@host> status
 ```
 
 ## SUPPORT CONTAINER REGISTORY
+- [x] DockerHub
 - [x] ECR in AWS
 - [ ] GCR in GCP
-- [ ] private DockerHub
