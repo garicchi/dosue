@@ -29,7 +29,8 @@ ${SCRIPT_NAME}
 DESCRIPTION
     A docker compose super express deployment tool
 
-    you can deploy docker-compose service more easily by using dosue    
+    you can deploy docker-compose service more easily by using dosue
+        
 EXAMPLE
     cd <path to docker-compose.yml>
     dosue --server ec2-user@<SERVER HOST> deploy

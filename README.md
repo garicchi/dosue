@@ -1,5 +1,19 @@
 # DOSUE
-DOcker compose SUper Express deployment tool
+DOcker compose SUper Express deployment commandline tool
+
+## INTRODUCTION
+`dosue` aims deploying docker container service more easily and comfortably
+we want to deploy small service written in docker-compose.yml to remote server by one command
+
+`dosue` wraps following process in one command
+- copy docker-compoe.yml to remote server
+- copy .env to remote server if you needed
+- `docker login` to `ECR` in remote server using credential in local machine
+- `docker-compose pull` in remote server
+- `docker-compose up -d` in remote server
+
+Therefore, services deployed by dosue can not scale out
+dosue is suited environment like small internal tool created by docker-compose
 
 ## INSTALL
 ```
