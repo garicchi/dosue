@@ -65,9 +65,9 @@ aws configure
 ```
 
 
-## DEPLOY CONTAINER
+## MANAGE CONTAINER
 
-### for deploying situation
+### DEPLOY
 ```sh
 # move service root directory
 cd <path to docker-compose.yml dir>
@@ -86,6 +86,14 @@ dosue --server <user@host> --registory ecs deploy
 
 # check container status
 dosue --server <user@host> status
+```
+
+### CLEANUP
+```sh
+# move service root directory
+cd <path to docker-compose.yml dir>
+
+dosue --server <user@host> --registory ecs cleanup
 ```
 
 ## SUPPORT CONTAINER REGISTORY
