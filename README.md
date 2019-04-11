@@ -9,6 +9,8 @@ DOcker compose SUper Express deployment tool
 we want to deploy small service written in docker-compose.yml to remote server by one command
 
 `dosue` wraps following process in one command
+- `docker login` to `ECR` in local machine
+- `docker-compose build` in local machine
 - `docker-compose push` in local machine
 - copy `docker-compoe.yml` to remote server
 - copy `.env` to remote server if you needed
@@ -76,14 +78,6 @@ docker-compose build && docker-compose up
 
 # ok! terminate
 ^C
-
-# login to ECR
-export AWS_PROFILE=<profile>
-aws configure --profile ${AWS_PROFILE}
-$(aws aws ecr get-login --region ap-northeast-1 --no-include-email --profile ${AWS_PROFILE})
-
-# push image to registory
-docker-compose push
 
 # deploy container
 #  dosue recognize ${AWS_PROFILE} environment variable
