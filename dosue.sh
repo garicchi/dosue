@@ -28,9 +28,12 @@ ${SCRIPT_NAME}
 
 DESCRIPTION
     A docker compose super express deployment tool
-    [ex]
-        cd <path to docker-compose.yml>
-        dosue -s ec2-user@dosue.com deploy
+
+    
+EXAMPLE
+    cd <path to docker-compose.yml>
+    dosue --server ec2-user@<SERVER HOST> deploy
+
 OPTIONS
     -s | --server
         [string] ssh style server host name ex. <username>@<host>
@@ -46,11 +49,14 @@ OPTIONS
        show version
     -h | --help
        show this message
+
 COMMANDS
     deploy
         pull and up conainers in remote server
     cleanup
         down and remove containers in remote server
+    status
+        show dosue status
     login
         login docker-compose.yml directory in remote server
     <any command>
@@ -162,6 +168,19 @@ if [[ ${COMMAND} = "cleanup" ]]; then
     exit 0
 fi
 
+if [[ ${COMMAND} = "status" ]]; then
+    printf "\n\n"
+    DOSUE_STATUS=$(ssh -p ${PORT} ${SERVER} "ls ${CONTAINER_PATH}|grep -x \"${SERVICE_NAME}\"|wc -l")
+    if [[ ${DOSUE_STATUS} -gt 0 ]]; then
+        printf "container [ ${SERVICE_NAME} ] directory found!\n"
+        printf "\n\n"
+        ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose ps"
+
+    else
+        printf "container [ ${SERVICE_NAME} ] directory not found!\n"
+    fi
+    exit 0
+fi
 if [[ ${COMMAND} = "login" ]]; then
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH};bash -i"
     exit 0
