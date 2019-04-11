@@ -29,30 +29,36 @@ ${SCRIPT_NAME}
 DESCRIPTION
     A docker compose super express deployment tool
 
-    
+    you can deploy docker-compose service more easily by using dosue    
 EXAMPLE
     cd <path to docker-compose.yml>
     dosue --server ec2-user@<SERVER HOST> deploy
 
 OPTIONS
     -s | --server
-       [string] ssh style server host name ex. <username>@<host>
+        [string] ssh style server host name ex. <username>@<host>
     -c | --compose-file
-       [string] docker-compose.yml path. default is current dir
+        [string] docker-compose.yml path. default is current dir
     -e | --env-file
-       [string] .env file path for docker-compose. default is current dir
+        [string] .env file path for docker-compose. default is current dir
     -p | --port
-       [int] ssh port number
+        [int] ssh port number for accessing remote server
     -r | --repository
-       [choice] container regisotry name { ecr, gcr }
+        [choice] container regisotry name { ecr }
+            now, dosue only support ecr
+            gcr support is future task
     -f | --force
-       [flag] force deploy
+        [flag] force deploy
     -w | --web-port
-       [int] a port number for web server
+        [int] a port number for web server
+            if specify this option, nginx will pass to access
+            from <host>/<service name> to <host>:<web port>
+            
+            so you can access web service by <host>/<service name>
     -v | --version
-       [flag] show version
+        [flag] show version
     -h | --help
-       show this message
+        show this message
 
 COMMANDS
     deploy
@@ -169,7 +175,6 @@ if [[ ${COMMAND} = "deploy" ]]; then
     
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose pull"
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose up -d"
-    set -x
     
     # enable to access http://<server host>/<service name>
     #   nginx reverse proxy passes access from <server host>:${WEB_PORT} to <server host>/<service name>
