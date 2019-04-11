@@ -91,3 +91,8 @@ dosue --server <user@host> deploy
 # check container status
 dosue --server <user@host> status
 ```
+
+## SUPPORT CONTAINER REGISTORY
+- [x] ECR in AWS
+- [ ] GCR in GCP
+- [ ] private DockerHub
