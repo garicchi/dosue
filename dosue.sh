@@ -47,6 +47,8 @@ OPTIONS
        [choice] container regisotry name { ecr, gcr }
     -f | --force
        [flag] force deploy
+    -w | --web-port
+       [int] a port number for web server
     -v | --version
        [flag] show version
     -h | --help
@@ -72,6 +74,7 @@ declare ENV_FILE=".env"
 declare PORT=22
 declare REGISTRY=""
 declare FORCE=false
+declare WEB_PORT=
 
 for OPT in "$@"; do
     case "$OPT" in
@@ -102,6 +105,10 @@ for OPT in "$@"; do
         -f | --force)
             FORCE=true
             shift 1
+            ;;
+        -w | --web-port)
+            WEB_PORT="$2"
+            shift 2
             ;;
         -h | --help)
             print_help
@@ -162,6 +169,22 @@ if [[ ${COMMAND} = "deploy" ]]; then
     
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose pull"
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose up -d"
+    set -x
+    
+    # enable to access http://<server host>/<service name>
+    #   nginx reverse proxy passes access from <server host>:${WEB_PORT} to <server host>/<service name>
+    if [[ ! -z ${WEB_PORT} ]]; then
+        cat << __EOS__ > /tmp/${SERVICE_NAME}.conf
+location /${SERVICE_NAME}/ {
+    proxy_pass http://127.0.0.1:${WEB_PORT}/;
+}
+
+__EOS__
+        scp -P ${PORT} /tmp/${SERVICE_NAME}.conf ${SERVER}:/tmp
+        ssh -p ${PORT} ${SERVER} "sudo mv /tmp/${SERVICE_NAME}.conf /etc/nginx/default.d/"
+        ssh -p ${PORT} ${SERVER} "sudo nginx -s reload"
+        rm -f /tmp/${SERVICE_NAME}.conf
+    fi
 
     # write commit hash in remote dosue.info
     if [[ -e ${CURRENT_DIR}/.git ]]; then
@@ -182,9 +205,25 @@ if [[ ${COMMAND} = "deploy" ]]; then
 fi
 
 if [[ ${COMMAND} = "cleanup" ]]; then
-    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && [[ \$(docker-compose ps -q|wc -l) -gt 0 ]] && docker-compose down"
-    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose rm -f -s"
+    if [[ ${DOSUE_STATUS} -eq 0 ]]; then
+        print_error "container [ ${SERVICE_NAME} ] not found!"
+        exit 1
+    fi
+    
+    if [[ ${FORCE} = false ]]; then
+        printf "container [ ${SERVICE_NAME} ] is already deployed\n"
+        read -p "Cleanup? (Y/n) " ANS
+        if [[ ! ${ANS} = "Y" ]]; then
+            if [[ ${ANS} = "n" || ! ${ANS} = "" ]]; then
+                printf "cleanup canceled!"
+                exit 1
+            fi
+        fi
+    fi
+
+    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose down -v --remove-orphans --rmi local"
     ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}"
+    ssh -p ${PORT} ${SERVER} "sudo rm -f /etc/nginx/default.d/${SERVICE_NAME}.conf||true"
     
     print_success "🧹 container cleanup completed!"
     exit 0
