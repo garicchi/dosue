@@ -142,6 +142,19 @@ fi
 readonly DOSUE_STATUS=$(ssh -p ${PORT} ${SERVER} "ls ${CONTAINER_PATH}|grep -x \"${SERVICE_NAME}\"|wc -l")
 
 if [[ ${COMMAND} = "deploy" ]]; then
+    # confirm AWS profile
+    if [[ ${FORCE} = false ]]; then
+        printf "conainer registory info\n"
+        printf "aws profile [ ${AWS_PROFILE} ]\n"
+        aws sts get-caller-identity --profile ${AWS_PROFILE}
+        read -p "Use this account? (Y/n) " ANS
+        if [[ ! ${ANS} = "Y" ]]; then
+            if [[ ${ANS} = "n" || ! ${ANS} = "" ]]; then
+                printf "deploy canceled!"
+                exit 1
+            fi
+        fi        
+    fi
     
     if [[ ${DOSUE_STATUS} -gt 0 && ${FORCE} = false ]]; then
         printf "container [ ${SERVICE_NAME} ] is already deployed\n"
@@ -166,6 +179,13 @@ if [[ ${COMMAND} = "deploy" ]]; then
     else
         echo "[WARNING] ${ENV_FILE} not found. skip to deploy env file"
     fi
+
+    # Dockerfileのあるディレクトリのフォルダがないとdocker-compose pullできない(謎)
+    # だからリモートにも同じフォルダを作る
+    for d in $(find . -type f -name Dockerfile); do
+        DIRECTORY=$(echo $d|sed -e "s/Dockerfile//g")
+        ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && mkdir -p ${DIRECTORY}"
+    done
     
     echo $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE}) > /tmp/ecr_login
     
