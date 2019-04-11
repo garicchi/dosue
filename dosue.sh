@@ -134,6 +134,15 @@ if [[ ${COMMAND} = "deploy" ]]; then
     
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose pull"
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose up -d"
+
+    # write commit hash in remote dosue.info
+    if [[ -e ${CURRENT_DIR}/.git ]]; then
+        pushd ${CURRENT_DIR}
+        COMMIT_HASH=$(git rev-parse HEAD)
+        popd
+    fi
+    # if already wrote, then append hash. if did not already write, then rewrite line
+    ssh -p ${PORT} ${SERVER} "FILE=${SERVICE_PATH}/dosue.info;REG=\"^GIT_HASH=\";LINE=\"GIT_HASH=${COMMIT_HASH}\";grep -e \"\$REG\" \$FILE&&(sed -e \"/\$REG/d\" -i \$FILE&&echo \$LINE>>\$FILE)||echo \$LINE>>\$FILE"
     
     ssh -p ${PORT} ${SERVER} "rm -f /tmp/ecr_login"
     rm -f /tmp/ecr_login
