@@ -164,8 +164,12 @@ if [[ ${COMMAND} = "deploy" ]]; then
                 printf "deploy canceled!"
                 exit 1
             fi
-        fi        
+        fi       
     fi
+    
+    pushd ${CURRENT_DIR}
+    docker-compose push
+    popd
 
     ssh -p ${PORT} ${SERVER} "mkdir -p ${CONTAINER_PATH}"
     ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}||true"
