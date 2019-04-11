@@ -9,6 +9,7 @@ DOcker compose SUper Express deployment tool
 we want to deploy small service written in docker-compose.yml to remote server by one command
 
 `dosue` wraps following process in one command
+- `docker-compose push` in local machine
 - copy `docker-compoe.yml` to remote server
 - copy `.env` to remote server if you needed
 - `docker login` to `ECR` in remote server using credential in local machine

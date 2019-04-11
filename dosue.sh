@@ -50,6 +50,8 @@ OPTIONS
             gcr support is future task
     -f | --force
         [flag] force deploy
+    -n | --no-push
+        [flag] deploy without image build & push
     -w | --web-port
         [int] a port number for web server
             if specify this option, nginx will pass to access
@@ -82,6 +84,7 @@ declare PORT=22
 declare REGISTRY=""
 declare FORCE=false
 declare WEB_PORT=
+declare NO_PUSH=false
 
 for OPT in "$@"; do
     case "$OPT" in
@@ -115,6 +118,10 @@ for OPT in "$@"; do
             ;;
         -w | --web-port)
             WEB_PORT="$2"
+            shift 2
+            ;;
+        -n | --no-push)
+            PORT="$2"
             shift 2
             ;;
         -h | --help)
@@ -166,10 +173,14 @@ if [[ ${COMMAND} = "deploy" ]]; then
             fi
         fi       
     fi
-    
-    pushd ${CURRENT_DIR}
-    docker-compose push
-    popd
+
+    if [[ ${NO_PUSH} = false ]]; then
+        pushd ${CURRENT_DIR}
+        $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE})
+        docker-compose build
+        docker-compose push
+        popd
+    fi
 
     ssh -p ${PORT} ${SERVER} "mkdir -p ${CONTAINER_PATH}"
     ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}||true"
