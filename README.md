@@ -1,7 +1,9 @@
 # DOSUE
-DOcker compose SUper Express deployment commandline tool
+DOcker compose SUper Express deployment tool
 
 ## INTRODUCTION
+`dosue` is a small commandline tool
+
 `dosue` aims deploying docker container service more easily and comfortably
 
 we want to deploy small service written in docker-compose.yml to remote server by one command
