@@ -26,7 +26,10 @@ if [[ ${PLATFORM} = "Debian GNU/Linux" ]]; then
     sudo chmod +x /usr/local/bin/docker-compose
     
     sudo apt-get install -y nginx
-    sed -i -e "47i         include /etc/nginx/default.d/*.conf;" /etc/nginx/sites-enabled/default
+    if [[ ! -e /etc/nginx/default.back ]]; then
+        sudo cp /etc/nginx/sites-enabled/default /etc/nginx/default.back
+    fi
+    sudo sed -i -e "47i         include /etc/nginx/default.d/*.conf;" /etc/nginx/sites-enabled/default
     sudo systemctl start nginx
     sudo systemctl enable nginx
 fi
@@ -53,7 +56,11 @@ if [[ ${PLATFORM} = "Ubuntu" ]]; then
     sudo chmod +x /usr/local/bin/docker-compose
 
     sudo apt-get install -y nginx
-    sed -i -e "47i         include /etc/nginx/default.d/*.conf;" /etc/nginx/sites-enabled/default
+    if [[ ! -e /etc/nginx/default.back ]]; then
+        sudo cp /etc/nginx/sites-enabled/default /etc/nginx/default.back
+    fi
+
+    sudo sed -i -e "47i         include /etc/nginx/default.d/*.conf;" /etc/nginx/sites-enabled/default
     sudo systemctl start nginx
     sudo systemctl enable nginx
     
