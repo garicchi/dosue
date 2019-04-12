@@ -22,12 +22,18 @@ Therefore, services deployed by dosue can not scale out
 
 dosue is suited environment like small internal tool created by docker-compose
 
-## INSTALL
+## INSTALL COMMAND
 ```sh
 curl -L -o /usr/local/bin/dosue https://github.com/garicchi/dosue/releases/download/1.1/dosue.sh;chmod u+x /usr/local/bin/dosue
 ```
 
-## UNINSTALL
+## SETUP SERVER
+```
+# only install docker and nginx
+curl https://raw.githubusercontent.com/garicchi/dosue/master/setup.sh|bash
+```
+
+## UNINSTALL COMMAND
 ```sh
 rm /usr/local/bin/dosue
 ```
