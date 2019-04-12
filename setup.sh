@@ -2,6 +2,8 @@
 
 PLATFORM=$(cat /etc/os-release|grep -e "^NAME=.*$"|sed -e "s/NAME=//g"|sed -e "s/\"//g")
 
+sudo mkdir -p /etc/nginx/default.d/
+
 if [[ ${PLATFORM} = "Debian GNU/Linux" ]]; then
     sudo apt-get update
     sudo apt-get install -y \
@@ -24,6 +26,7 @@ if [[ ${PLATFORM} = "Debian GNU/Linux" ]]; then
     sudo chmod +x /usr/local/bin/docker-compose
     
     sudo apt-get install -y nginx
+    sed -i -e "47i         include /etc/nginx/default.d/*.conf;" /etc/nginx/sites-enabled/default
     sudo systemctl start nginx
     sudo systemctl enable nginx
 fi
@@ -50,6 +53,7 @@ if [[ ${PLATFORM} = "Ubuntu" ]]; then
     sudo chmod +x /usr/local/bin/docker-compose
 
     sudo apt-get install -y nginx
+    sed -i -e "47i         include /etc/nginx/default.d/*.conf;" /etc/nginx/sites-enabled/default
     sudo systemctl start nginx
     sudo systemctl enable nginx
     
