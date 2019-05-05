@@ -88,7 +88,7 @@ docker-compose build && docker-compose up
 
 # deploy container
 #  dosue recognize ${AWS_PROFILE} environment variable
-dosue --server <user@host> --registory ecs deploy
+dosue --server <user@host> --registory ecr deploy
 
 # check container status
 dosue --server <user@host> status
@@ -99,7 +99,7 @@ dosue --server <user@host> status
 # move service root directory
 cd <path to docker-compose.yml dir>
 
-dosue --server <user@host> --registory ecs cleanup
+dosue --server <user@host> --registory ecr cleanup
 ```
 
 ## SUPPORT CONTAINER REGISTORY
