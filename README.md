@@ -26,7 +26,7 @@ dosue is suited environment like small internal tool created by docker-compose
 
 ## INSTALL COMMAND
 ```sh
-curl -L -o /usr/local/bin/dosue https://github.com/garicchi/dosue/releases/download/1.1/dosue.sh;chmod u+x /usr/local/bin/dosue
+curl -L -o /usr/local/bin/dosue https://raw.githubusercontent.com/garicchi/dosue/master/dosue.sh;chmod u+x /usr/local/bin/dosue
 ```
 
 ## SETUP SERVER
