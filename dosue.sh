@@ -189,7 +189,7 @@ if [[ ${COMMAND} = "deploy" ]]; then
     if [[ ${FORCE} = false ]]; then
         printf "conainer registory info\n"
         if [[ "${REGISTORY}" = "ecr" ]]; then
-            printf "aws profile [ ${AWS_PROFILE} ]\n"
+            printf "aws profile [ ${DOSUE_AWS_PROFILE} ]\n"
             printf "if you want to change profile then you should set environment DOSUE_AWS_PROFILE=<profile>"
             aws sts get-caller-identity --profile ${DOSUE_AWS_PROFILE}
         elif [[ "${REGISTORY}" = "hub" ]]; then
@@ -260,6 +260,11 @@ if [[ ${COMMAND} = "deploy" ]]; then
         scp -P ${PORT} ${ENV_FILE} ${SERVER}:${SERVICE_PATH}/
     else
         echo "[WARNING] ${ENV_FILE} not found. skip to deploy env file"
+    fi
+
+    # binフォルダにスクリプトとか入れることを考慮してbinフォルダもコピー
+    if [[ -e bin/ ]]; then
+        scp -P ${PORT} -r bin/ ${SERVER}:${SERVICE_PATH}/
     fi
 
     ######
@@ -406,7 +411,7 @@ if [[ ${COMMAND} = "login" ]]; then
     
     print_step "login to remote server"
 
-    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH};bash -i"
+    ssh -t -p ${PORT} ${SERVER} "cd ${SERVICE_PATH};bash -l"
     exit 0
 fi
 

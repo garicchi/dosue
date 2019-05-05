@@ -106,3 +106,16 @@ dosue --server <user@host> --registory ecr cleanup
 - [x] DockerHub
 - [x] ECR in AWS
 - [ ] GCR in GCP
+
+## TIPS
+
+### CHANGE AWS PROFILE
+set environment variable `DOSUE_AWS_PROFILE`
+
+```
+export DOSUE_AWS_PROFILE
+```
+
+### COPY EXTERNAL SCRIPTS OR FILE TO REMOTE WITH DEPLOY
+`<path/to/docker-compose.yml>/bin/` directory will also copy when deploy dosue
+so if you write external script in `bin/` directory then those scripts copy in remote server
