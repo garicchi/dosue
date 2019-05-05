@@ -88,7 +88,7 @@ docker-compose build && docker-compose up
 
 # deploy container
 #  dosue recognize ${AWS_PROFILE} environment variable
-dosue --server <user@host> --registory ecs deploy
+dosue --server <user@host> --registory ecr deploy
 
 # check container status
 dosue --server <user@host> status
@@ -99,10 +99,23 @@ dosue --server <user@host> status
 # move service root directory
 cd <path to docker-compose.yml dir>
 
-dosue --server <user@host> --registory ecs cleanup
+dosue --server <user@host> --registory ecr cleanup
 ```
 
 ## SUPPORT CONTAINER REGISTORY
 - [x] DockerHub
 - [x] ECR in AWS
 - [ ] GCR in GCP
+
+## TIPS
+
+### CHANGE AWS PROFILE
+set environment variable `DOSUE_AWS_PROFILE`
+
+```
+export DOSUE_AWS_PROFILE
+```
+
+### COPY EXTERNAL SCRIPTS OR FILE TO REMOTE WITH DEPLOY
+`<path/to/docker-compose.yml>/bin/` directory will also copy when deploy dosue
+so if you write external script in `bin/` directory then those scripts copy in remote server

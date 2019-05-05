@@ -4,6 +4,7 @@ set -e
 export LANG=ja_JP.UTF-8
 
 readonly COLOR_SUCCESS="\e[32;1m"
+readonly COLOR_STEP="\e[33;1m"
 readonly COLOR_INPUT="\e[35;5m"
 readonly COLOR_ERROR="\e[31;1m"
 readonly COLOR_END="\e[m"
@@ -12,10 +13,14 @@ readonly SCRIPT_NAME="$(basename $0)"
 readonly SCRIPT_PATH="$(cd $(dirname $0); pwd)"
 readonly CURRENT_DIR=$(pwd)
 readonly CONTAINER_PATH="\${HOME}/.containers"
-readonly VERSION=1.1
+readonly VERSION=1.2
+
+function print_step {
+    printf "\n${COLOR_STEP}[STEP] $1${COLOR_END}\n"
+}
 
 function print_success {
-    printf "\n${COLOR_SUCCESS}[SUCCESS] $1${COLOR_END}\n" >&2
+    printf "\n${COLOR_SUCCESS}[SUCCESS] $1${COLOR_END}\n"
 }
 
 function print_error {
@@ -73,8 +78,18 @@ COMMANDS
         login docker-compose.yml directory in remote server
     <any command>
         any command passes to remote docker compose
+
+ENVIRONMENTS
+    DOSUE_AWS_PROFILE
+        aws profile name by using ecr
 __EOS__
 }
+
+######
+###### analyzing input parameters
+######
+
+print_step "analyzing parameters"
 
 declare SERVER
 declare COMPOSE_FILE="docker-compose.yml"
@@ -133,7 +148,7 @@ done
 COMMANDS="$@"
 COMMAND="${COMMANDS[0]}"
 
-if [[ -z "${AWS_PROFILE}" ]]; then
+if [[ -z "${DOSUE_AWS_PROFILE}" ]]; then
     AWS_PROFILE="default"
 fi
 
@@ -156,13 +171,27 @@ fi
 
 readonly DOSUE_STATUS=$(ssh -p ${PORT} ${SERVER} "ls ${CONTAINER_PATH}|grep -x \"${SERVICE_NAME}\"|wc -l")
 
+######
+###### process command
+######
+
+print_step "execute command [ ${COMMAND} ]"
+
 if [[ ${COMMAND} = "deploy" ]]; then
+
+    ######
+    ###### check registry account
+    ######
+    
+    print_step "check registry account"
+
     # confirm AWS profile
     if [[ ${FORCE} = false ]]; then
         printf "conainer registory info\n"
         if [[ "${REGISTORY}" = "ecr" ]]; then
-            printf "aws profile [ ${AWS_PROFILE} ]\n"
-            aws sts get-caller-identity --profile ${AWS_PROFILE}
+            printf "aws profile [ ${DOSUE_AWS_PROFILE} ]\n"
+            printf "if you want to change profile then you should set environment DOSUE_AWS_PROFILE=<profile>"
+            aws sts get-caller-identity --profile ${DOSUE_AWS_PROFILE}
         elif [[ "${REGISTORY}" = "hub" ]]; then
             printf "use DockerHub\n"
         fi
@@ -174,7 +203,13 @@ if [[ ${COMMAND} = "deploy" ]]; then
             fi
         fi        
     fi
+
+    ######
+    ###### check deployment status
+    ######
     
+    print_step "check deployment status"
+
     if [[ ${DOSUE_STATUS} -gt 0 && ${FORCE} = false ]]; then
         printf "container [ ${SERVICE_NAME} ] is already deployed\n"
         read -p "Overwrite? (Y/n) " ANS
@@ -185,11 +220,17 @@ if [[ ${COMMAND} = "deploy" ]]; then
             fi
         fi       
     fi
-
+    
     if [[ ${NO_PUSH} = false ]]; then
+        ######
+        ###### push images
+        ######
+        
+        print_step "push images"
+
         pushd ${CURRENT_DIR}
         if [[ "${REGISTORY}" = "ecr" ]]; then
-            $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE})
+            $(aws ecr get-login --no-include-email --profile ${DOSUE_AWS_PROFILE})
         elif [[ "${REGISTORY}" = "hub" ]]; then
             read -p "DockerHub ID:" HUB_USER
             read -sp "DockerHub Pass:" HUB_PASS
@@ -201,6 +242,12 @@ if [[ ${COMMAND} = "deploy" ]]; then
         docker-compose push
         popd
     fi
+
+    ######
+    ###### copy files to remote server
+    ######
+    
+    print_step "copy files to remote server"
 
     ssh -p ${PORT} ${SERVER} "mkdir -p ${CONTAINER_PATH}"
     ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}||true"
@@ -215,14 +262,26 @@ if [[ ${COMMAND} = "deploy" ]]; then
         echo "[WARNING] ${ENV_FILE} not found. skip to deploy env file"
     fi
 
+    # binフォルダにスクリプトとか入れることを考慮してbinフォルダもコピー
+    if [[ -e bin/ ]]; then
+        scp -P ${PORT} -r bin/ ${SERVER}:${SERVICE_PATH}/
+    fi
+
+    ######
+    ###### pull images
+    ######
+    
+    print_step "pull images"
+    
     # Dockerfileのあるディレクトリのフォルダがないとdocker-compose pullできない(謎)
     # だからリモートにも同じフォルダを作る
     for d in $(find . -type f -name Dockerfile); do
         DIRECTORY=$(echo $d|sed -e "s/Dockerfile//g")
         ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && mkdir -p ${DIRECTORY}"
     done
+
     if [[ "${REGISTORY}" = "ecr" ]]; then
-        echo $(aws ecr get-login --no-include-email --profile ${AWS_PROFILE}) > /tmp/ecr_login
+        echo $(aws ecr get-login --no-include-email --profile ${DOSUE_AWS_PROFILE}) > /tmp/ecr_login
         scp -P ${PORT} /tmp/ecr_login ${SERVER}:/tmp/
         ssh -p ${PORT} ${SERVER} "chmod u+x /tmp/ecr_login && bash /tmp/ecr_login"
         ssh -p ${PORT} ${SERVER} "rm -f /tmp/ecr_login"
@@ -230,10 +289,17 @@ if [[ ${COMMAND} = "deploy" ]]; then
     elif [[ "${REGISTORY}" = "hub" ]]; then
         ssh -p ${PORT} ${SERVER} "docker login -u ${HUB_USER} -p ${HUB_PASS}"
     fi
-    
+
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && [[ \$(docker-compose ps -q|wc -l) -gt 0 ]] && docker-compose down || true"
     
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose pull"
+
+    ######
+    ###### up services
+    ######
+    
+    print_step "up services"
+
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose up -d"
     
     # enable to access http://<server host>/<service name>
@@ -251,6 +317,13 @@ __EOS__
         rm -f /tmp/${SERVICE_NAME}.conf
     fi
 
+    ######
+    ###### write deplyment status
+    ######
+    
+    print_step "write deployment status"
+
+
     # write commit hash in remote dosue.info
     if [[ -e ${CURRENT_DIR}/.git ]]; then
         pushd ${CURRENT_DIR}
@@ -260,7 +333,12 @@ __EOS__
     # if already wrote, then append hash. if did not already write, then rewrite line
     ssh -p ${PORT} ${SERVER} "FILE=${SERVICE_PATH}/dosue.info;REG=\"^GIT_HASH=\";LINE=\"GIT_HASH=${COMMIT_HASH}\";grep -e \"\$REG\" \$FILE&&(sed -e \"/\$REG/d\" -i \$FILE&&echo \$LINE>>\$FILE)||echo \$LINE>>\$FILE"
     
-     
+    ######
+    ###### docker logout
+    ######
+    
+    print_step "docker logout"
+
     ssh -p ${PORT} ${SERVER} "docker logout"
 
     print_success "🚅 container deployment completed!"
@@ -268,6 +346,12 @@ __EOS__
 fi
 
 if [[ ${COMMAND} = "cleanup" ]]; then
+    ######
+    ###### check to cleanup
+    ######
+    
+    print_step "check to cleanup"
+
     if [[ ${DOSUE_STATUS} -eq 0 ]]; then
         print_error "container [ ${SERVICE_NAME} ] not found!"
         exit 1
@@ -284,6 +368,12 @@ if [[ ${COMMAND} = "cleanup" ]]; then
         fi
     fi
 
+    ######
+    ###### down services
+    ######
+    
+    print_step "down services"
+
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose down -v --remove-orphans --rmi local"
     ssh -p ${PORT} ${SERVER} "rm -rf ${SERVICE_PATH}"
     ssh -p ${PORT} ${SERVER} "sudo rm -f /etc/nginx/default.d/${SERVICE_NAME}.conf||true"
@@ -293,6 +383,12 @@ if [[ ${COMMAND} = "cleanup" ]]; then
 fi
 
 if [[ ${COMMAND} = "status" ]]; then
+    ######
+    ###### show statues
+    ######
+    
+    print_step "show statues"
+
     printf "***** deploy status *****\n\n"
     if [[ ${DOSUE_STATUS} -gt 0 ]]; then
         printf "container [ ${SERVICE_NAME} ] already deployed!\n"
@@ -309,11 +405,23 @@ if [[ ${COMMAND} = "status" ]]; then
     exit 0
 fi
 if [[ ${COMMAND} = "login" ]]; then
-    ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH};bash -i"
+    ######
+    ###### login to remote server
+    ######
+    
+    print_step "login to remote server"
+
+    ssh -t -p ${PORT} ${SERVER} "cd ${SERVICE_PATH};bash -l"
     exit 0
 fi
 
 if [[ ! -z "${COMMAND}" ]]; then    
+    ######
+    ###### execute docker-compose command in remote
+    ######
+    
+    print_step "execute docker-compose command in remote"
+
     ssh -p ${PORT} ${SERVER} "cd ${SERVICE_PATH} && docker-compose ${COMMANDS}"
     exit 0
 fi
